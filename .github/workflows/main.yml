@@ -1,51 +1,87 @@
-name: CI
+name: CI Pipeline
 
-on: [push]
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
 
 jobs:
- sast_scan:
-   name: Run Bandit Scan
-   runs-on: ubuntu-latest
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
 
-   steps:
-   - name: Checkout code
-     uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
 
-   - name: Set up Python
-     uses: actions/setup-python@v2
-     with:
-       python-version: 3.8
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-   - name: Install Bandit
-     run: pip install bandit
+      - name: Run unit tests
+        run: pytest --junitxml=reports/test-results.xml
 
-   - name: Run Bandit Scan
-     run: bandit -ll -ii -r . -f json -o report.json
+  sast:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
 
-   - name: Upload Artifact
-     uses: actions/upload-artifact@v4
-     if: always()
-     with:
-      name: bandit-findings
-      path: bandit-report.json
+      - name: Run Bandit (Python SAST)
+        run: |
+          pip install bandit
+          bandit -r src -f json -o reports/sast-results.json
 
- image_scan:
-   name: Build Image and Run Image Scan
-   runs-on: ubuntu-latest
+      - name: Run Semgrep (general SAST)
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: "p/ci"
 
-   steps:
-   - name: Checkout code
-     uses: actions/checkout@v2
+  sca:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
 
-   - name: Set up Docker
-     uses: docker-practice/actions-setup-docker@v1
-     with:
-      docker_version: '20.10.7'
+      - name: Run Dependency Review (GitHub native SCA)
+        uses: actions/dependency-review-action@v4
 
-   - name: Build Docker Image
-     run: docker build -f Dockerfile -t myapp:latest .
+      - name: Run Safety (Python SCA)
+        run: |
+          pip install safety
+          safety check -r requirements.txt --json > reports/sca-results.json
 
+  container-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
 
-   
+      - name: Build Docker image
+        run: docker build -t myapp:latest .
 
-   
+      - name: Run Trivy scan
+        uses: aquasecurity/trivy-action@0.20.0
+        with:
+          image-ref: myapp:latest
+          format: 'json'
+          output: 'reports/container-scan.json'
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Run GitHub Secret Scanning
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python
+
+      - name: Run Gitleaks (extra secret scanning)
+        uses: zricethezav/gitleaks-action@v2
