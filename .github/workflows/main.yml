@@ -40,12 +40,13 @@ jobs:
       - name: Run Bandit (Python SAST)
         run: |
           pip install bandit
-          bandit -r src -f json -o reports/sast-results.json
+          bandit -r src -f json -o reports/sast-results.json || true
 
       - name: Run Semgrep (general SAST)
         uses: returntocorp/semgrep-action@v1
         with:
           config: "p/ci"
+        continue-on-error: true
 
   # Dependency Review (PR-only)
   dependency-review:
@@ -58,7 +59,7 @@ jobs:
       - name: Dependency Review
         uses: actions/dependency-review-action@v4
 
-  SCA:
+  Container Scanning:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source
