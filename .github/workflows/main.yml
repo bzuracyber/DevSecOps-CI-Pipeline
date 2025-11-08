@@ -28,6 +28,13 @@ jobs:
           mkdir -p reports
           pytest --junitxml=reports/test-results.xml
 
+      - name: Upload reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-${{ github.job }}
+          path: reports/
+  
+
   sast:
     runs-on: ubuntu-latest
     steps:
@@ -47,6 +54,12 @@ jobs:
         with:
           config: "p/ci"
         continue-on-error: true
+
+      - name: Upload reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-${{ github.job }}
+          path: reports/
 
   # Dependency Review (PR-only)
   dependency-review:
@@ -81,6 +94,12 @@ jobs:
           mkdir -p reports
           safety check --json > reports/sca-results.json || true
 
+      - name: Upload reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-${{ github.job }}
+          path: reports/
+
   Container-Scanning:
     runs-on: ubuntu-latest
     steps:
@@ -99,6 +118,12 @@ jobs:
           image-ref: myapp:latest
           format: 'json'
           output: 'reports/container-scan.json'
+
+      - name: Upload reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-${{ github.job }}
+          path: reports/
 
   secret-scan:
     runs-on: ubuntu-latest
