@@ -31,7 +31,10 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
-
+        
+      - name: Prepare reports directory
+        run: mkdir -p reports
+        
       - name: Run Bandit (Python SAST)
         run: |
           pip install bandit
