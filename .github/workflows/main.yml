@@ -46,19 +46,38 @@ jobs:
           config: "p/ci"
 
   sca:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
+    dependency-review:
+      if: github.event_name == 'pull_request'
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout source
+          uses: actions/checkout@v4
+  
+        - name: Dependency Review
+          uses: actions/dependency-review-action@v4
 
-      - name: Run Dependency Review
-        uses: actions/dependency-review-action@v4
-
-      - name: Run Safety (Python SCA)
-        run: |
-          pip install safety
-          safety check -r requirements.txt --json > reports/sca-results.json
+  # Safety SCA (runs on push + PR)
+    safety-scan:
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout source
+          uses: actions/checkout@v4
+  
+        - name: Set up Python
+          uses: actions/setup-python@v5
+          with:
+            python-version: '3.11'
+  
+        - name: Install dependencies
+          run: |
+            python -m pip install --upgrade pip
+            pip install -r requirements.txt
+            pip install safety
+  
+        - name: Run Safety scan
+          run: |
+            mkdir -p reports
+            safety check --json > reports/sca-results.json
 
   container-scan:
     runs-on: ubuntu-latest
