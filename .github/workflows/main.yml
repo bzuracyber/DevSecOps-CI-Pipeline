@@ -66,6 +66,9 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
+      - name: Prepare reports directory
+        run: mkdir -p reports
+
       - name: Build Docker image
         run: docker build -t myapp:latest .
 
